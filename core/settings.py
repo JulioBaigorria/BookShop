@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'graphene_django',
     'applications.book',
+    'applications.user',
 ]
 
 MIDDLEWARE = [
@@ -129,3 +130,5 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 GRAPHENE = {
     "SCHEMA": "applications.book.schema.schema"
 }
+
+AUTH_USER_MODEL = 'user.User'
