@@ -1,29 +1,45 @@
 import graphene
+from graphql_auth import mutations
 from graphene_django import DjangoObjectType
+from graphql_auth.schema import UserQuery, MeQuery
+
 from .models import Book, Author, Category
+
+# print(graphene.__all__)
+
+
+class AuthMutation(graphene.ObjectType):
+    register = mutations.Register.Field()
+    verify_account = mutations.VerifyAccount.Field()
+    update_account = mutations.UpdateAccount.Field()
+
+    # django-graphql-jwt inheritances
+    token_auth = mutations.ObtainJSONWebToken.Field()
 
 
 class BookType(DjangoObjectType):
     class Meta:
         model = Book
-        fields = ('id', 'title', 'excerpt', 'category', 'author', 'date_created',)
+        fields = "__all__"
 
 
 class AuthorType(DjangoObjectType):
     class Meta:
         model = Author
-        fields = ('id', 'name',)
+        fields = "__all__"
 
 
 class CategoryType(DjangoObjectType):
     class Meta:
         model = Category
-        fields = ('id', 'name',)
+        fields = "__all__"
 
 
-class Query(graphene.ObjectType):
+class Query(UserQuery, MeQuery, graphene.ObjectType):
+
+    book = graphene.Field(BookType, id=graphene.Int())
     all_books = graphene.List(BookType)
-    book_by_name = graphene.Field(BookType)
+    book_by_name = graphene.Field(BookType, title=graphene.String())
 
     all_authors = graphene.List(AuthorType)
     author_by_name = graphene.Field(AuthorType)
@@ -34,12 +50,14 @@ class Query(graphene.ObjectType):
     ''' get -> field
         filter -> list
         all -> list '''
+    def resolve_book(root, info, id):
+        return Book.objects.select_related().get(id=id)
 
     def resolve_all_books(root, info):
-        return Book.objects.all()
+        return Book.objects.select_related().all()
 
-    def resolve_book_by_name(root, info):
-        return Book.objects.get(title="Gone Girl")
+    def resolve_book_by_name(root, info, title):
+        return Book.objects.get(title=title)
 
     def resolve_all_authors(root, info):
         return Author.objects.all()
@@ -55,7 +73,6 @@ class Query(graphene.ObjectType):
 
 
 class CreateBookMutation(graphene.Mutation):
-
     class Arguments:
         title = graphene.String(required=True)
         excerpt = graphene.String()
@@ -74,7 +91,6 @@ class CreateBookMutation(graphene.Mutation):
 
 
 class UpdateBookMutation(graphene.Mutation):
-
     class Arguments:
         id = graphene.ID()
         title = graphene.String(required=True)
@@ -100,7 +116,6 @@ class UpdateBookMutation(graphene.Mutation):
 
 
 class DeleteBookMutation(graphene.Mutation):
-
     class Arguments:
         id = graphene.ID()
 
@@ -113,8 +128,7 @@ class DeleteBookMutation(graphene.Mutation):
         return CreateBookMutation(book=book)
 
 
-class Mutation(graphene.ObjectType):
-
+class Mutation(AuthMutation, graphene.ObjectType):
     create_book = CreateBookMutation.Field()
     update_book = UpdateBookMutation.Field()
     delete_book = DeleteBookMutation.Field()
